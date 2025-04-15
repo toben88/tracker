@@ -30,12 +30,13 @@ A lightweight, self-hosted PHP web analytics solution that allows you to monitor
 ### Installation
 
 1. Clone or download this repository
-2. Upload the contents of the `php-version` directory to your web server
+2. Upload all files to your web server
 3. Set proper permissions:
    - `755` for directories
    - `644` for files
    - `755` for the `data` directory
-4. Access the application through your web browser
+4. Ensure the `.htaccess` file in the data directory is properly uploaded to protect your data
+5. Access the application through your web browser
 
 ## 📝 Usage
 
@@ -43,8 +44,8 @@ A lightweight, self-hosted PHP web analytics solution that allows you to monitor
 
 1. Access the application URL in your browser (e.g., https://yourdomain.com/tracker/)
 2. Login with default credentials:
-   - Username: `admin`
-   - Password: `admin123`
+   - Username: `REDACTED`
+   - Password: `REDACTED`
 3. **IMPORTANT**: Change your password immediately after first login
 4. Create a new tracking site by clicking "Add New Site" in the sidebar
 5. Enter a name and URL for your site
@@ -60,6 +61,14 @@ A lightweight, self-hosted PHP web analytics solution that allows you to monitor
 ```
 
 3. Replace `yourdomain.com/tracker` with your actual server domain and path
+4. The tracking script automatically collects:
+   - Browser name and version
+   - Operating system/platform
+   - Screen size and pixel ratio
+   - Viewport dimensions
+   - Referrer information
+   - Visit timestamp
+   - IP address (stored securely)
 
 ### Viewing Tracking Data
 
@@ -80,6 +89,7 @@ A lightweight, self-hosted PHP web analytics solution that allows you to monitor
 │   └── visits.php      # Visit data retrieval
 ├── css/                # CSS styles
 ├── data/               # Data storage directory
+│   ├── .htaccess       # Protects data from direct access
 │   ├── admins.json     # Admin user accounts
 │   ├── sites/          # Site configuration files
 │   └── visits/         # Visit data records
@@ -88,6 +98,7 @@ A lightweight, self-hosted PHP web analytics solution that allows you to monitor
 │   └── tracker.js      # Tracking script for embedding
 ├── admin.php           # Admin dashboard
 ├── index.php           # Login page
+├── robots.txt          # Prevents indexing of admin areas
 └── README.md           # Documentation
 ```
 
@@ -104,12 +115,21 @@ For production use, consider the following:
    - Protect the data directory with the included .htaccess file
 4. **Scaling**: For high-traffic sites, consider migrating from JSON files to a database like MySQL
 
-## 🔒 Privacy Considerations
+## 🔒 Privacy & Security Considerations
 
+### Privacy
 - This tracker collects user data, so ensure you comply with privacy regulations (GDPR, CCPA, etc.)
 - Add appropriate privacy disclosures to your website
 - Consider implementing cookie consent if required in your jurisdiction
 - The tracker does not use cookies by default, but collects IP addresses and user agent data
+
+### Security Features
+- **CSRF Protection**: All forms and API endpoints are protected against Cross-Site Request Forgery
+- **Rate Limiting**: The tracking endpoint is rate-limited to prevent abuse
+- **Content Security Policy**: Restricts resource loading to trusted sources
+- **Secure Sessions**: HttpOnly and Secure flags for session cookies
+- **Protected Data**: The data directory is protected from direct access
+- **Input Validation**: All user inputs are validated and sanitized
 
 ## 🤝 Contributing
 
