@@ -5,8 +5,8 @@
 (function() {
   // Configuration
   const trackerEndpoint = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3000/api/track' 
-    : 'https://your-tracker-domain.com/api/track';
+    ? 'http://localhost/tracker/api/track.php' 
+    : 'https://ricovision.com/tracker/api/track.php';
   
   // Get the site ID from the script tag
   function getSiteId() {

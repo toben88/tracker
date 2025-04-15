@@ -1,10 +1,39 @@
+<?php
+// Enhance session security - must be set before session_start()
+ini_set('session.cookie_httponly', 1);
+if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    ini_set('session.cookie_secure', 1);
+}
+
+// Start session
+session_start();
+
+// Regenerate session ID on each request
+session_regenerate_id(true);
+
+// Generate CSRF token if it doesn't exist
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Add Content Security Policy
+header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com data:;");
+
+// Check if user is logged in
+if (!isset($_SESSION['isAuthenticated']) || $_SESSION['isAuthenticated'] !== true) {
+    // Redirect to login page
+    header('Location: index.php');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
   <title>Tracker Admin Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
@@ -13,7 +42,7 @@
       <div class="header-content">
         <h1><i class="fas fa-chart-line"></i> Tracker Admin Dashboard</h1>
         <div class="user-controls">
-          <span class="username">Welcome, <span id="username-display">admin</span></span>
+          <span class="username">Welcome, <span id="username-display"><?php echo htmlspecialchars($_SESSION['username']); ?></span></span>
           <button id="logout-btn" class="btn btn-sm"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
       </div>
@@ -141,6 +170,6 @@
     </div>
   </div>
   
-  <script src="app.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

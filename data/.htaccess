@@ -1,0 +1,11 @@
+# Protect data directory from direct access
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ - [F,L]
+</IfModule>
+
+# Deny access from all
+<FilesMatch ".*">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

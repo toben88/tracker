@@ -1,10 +1,41 @@
+<?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Enhance session security - must be set before session_start()
+ini_set('session.cookie_httponly', 1);
+if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    ini_set('session.cookie_secure', 1);
+}
+
+// Start session
+session_start();
+
+// Generate CSRF token if it doesn't exist
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Add Content Security Policy
+header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com data:;");
+
+// Check if user is already logged in
+if (isset($_SESSION['isAuthenticated']) && $_SESSION['isAuthenticated'] === true) {
+    // Redirect to admin dashboard
+    header('Location: admin.php');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
   <title>Login - Tracker Admin</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link rel="stylesheet" href="css/styles.css">
   <style>
     * {
       margin: 0;
@@ -125,8 +156,7 @@
     </form>
     
     <div class="login-footer">
-      <p>Default credentials: admin / admin123</p>
-      <p>Please change your password after first login</p>
+      <p>Please contact your administrator if you need access</p>
     </div>
   </div>
   
@@ -139,25 +169,48 @@
       const errorMessage = document.getElementById('error-message');
       
       try {
-        const response = await fetch('/api/login', {
+        // Get CSRF token from meta tag
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
+        
+        errorMessage.textContent = 'Attempting to log in...';
+        errorMessage.style.display = 'block';
+        
+        console.log('Sending login request for user:', username);
+        const response = await fetch('api/auth.php?action=login', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken || ''
           },
           body: JSON.stringify({ username, password })
         });
         
-        const data = await response.json();
+        console.log('Response status:', response.status);
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error('Failed to parse JSON response:', e);
+          errorMessage.textContent = 'Server returned invalid response. Check console for details.';
+          return;
+        }
         
         if (response.ok && data.success) {
-          // Redirect to dashboard
-          window.location.href = '/';
+          console.log('Login successful, redirecting to admin.php');
+          errorMessage.textContent = 'Login successful! Redirecting...';
+          window.location.href = 'admin.php';
         } else {
-          // Show error message
+          console.error('Login failed:', data.error);
+          errorMessage.textContent = data.error || 'Login failed. Please check your credentials.';
           errorMessage.style.display = 'block';
         }
       } catch (error) {
         console.error('Login error:', error);
+        errorMessage.textContent = 'An error occurred. Please try again.';
         errorMessage.style.display = 'block';
       }
     });

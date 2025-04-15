@@ -5,10 +5,10 @@
 
 // API endpoints
 const API = {
-  sites: '/api/sites',
-  visits: '/api/visits',
-  siteVisits: (siteId) => `/api/sites/${siteId}/visits`,
-  track: '/api/track'
+  sites: 'api/sites.php',
+  visits: 'api/visits.php',
+  siteVisits: (siteId) => `api/visits.php?siteId=${siteId}`,
+  auth: 'api/auth.php'
 };
 
 // DOM Elements
@@ -84,10 +84,14 @@ async function fetchData(url) {
 
 async function postData(url, data) {
   try {
+    // Get CSRF token from meta tag
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken || ''
       },
       body: JSON.stringify(data)
     });
@@ -135,20 +139,16 @@ function renderSites(sites) {
           <div class="stat-value" id="site-${site.id}-visits">-</div>
           <div class="stat-label">Visits</div>
         </div>
-        <div class="stat">
-          <div class="stat-value" id="site-${site.id}-today">-</div>
-          <div class="stat-label">Today</div>
-        </div>
       </div>
     `;
     
     siteCard.addEventListener('click', () => {
+      currentSiteId = site.id;
       loadSiteDetails(site.id);
+      showPage('site-details');
     });
     
     elements.sitesList.appendChild(siteCard);
-    
-    // Load visit counts for this site
     loadSiteVisitCounts(site.id);
   });
 }
@@ -158,15 +158,10 @@ async function loadSiteVisitCounts(siteId) {
   
   if (!visits) return;
   
-  const totalVisits = visits.length;
-  
-  const today = new Date().toISOString().split('T')[0];
-  const todayVisits = visits.filter(visit => 
-    visit.timestamp.startsWith(today)
-  ).length;
-  
-  document.getElementById(`site-${siteId}-visits`).textContent = totalVisits;
-  document.getElementById(`site-${siteId}-today`).textContent = todayVisits;
+  const visitCountElement = document.getElementById(`site-${siteId}-visits`);
+  if (visitCountElement) {
+    visitCountElement.textContent = visits.length;
+  }
 }
 
 // Load Visits
@@ -187,95 +182,63 @@ async function loadVisits() {
 function renderVisits(visits, container) {
   container.innerHTML = '';
   
-  if (visits.length === 0) {
+  if (!visits || visits.length === 0) {
     container.innerHTML = '<p>No visits found.</p>';
     return;
   }
   
-  const table = document.createElement('table');
-  table.className = 'visits-table';
-  
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Date & Time</th>
-        <th>Site</th>
-        <th>Browser</th>
-        <th>Version</th>
-        <th>Platform</th>
-        <th>Screen Size</th>
-        <th>Pixel Ratio</th>
-        <th>Viewport</th>
-        <th>Referrer</th>
-        <th>Details</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
-  
-  const tbody = table.querySelector('tbody');
-  
   visits.forEach(visit => {
-    const site = allSites.find(s => s.id === visit.siteId) || { name: 'Unknown' };
+    const site = allSites.find(s => s.id === visit.siteId) || { name: 'Unknown Site' };
     
-    // Handle both old and new data formats
-    const browserName = visit.browserName || visit.browser || 'Unknown';
-    const browserVersion = visit.browserVersion || 'Unknown';
-    const pixelRatio = visit.pixelRatio || 'Unknown';
-    const viewport = visit.viewport || 'Unknown';
+    const visitItem = document.createElement('div');
+    visitItem.className = 'visit-item';
     
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${formatDate(visit.timestamp)}</td>
-      <td>${site.name}</td>
-      <td>${browserName}</td>
-      <td>${browserVersion}</td>
-      <td>${visit.platform}</td>
-      <td>${visit.screenSize}</td>
-      <td>${pixelRatio}</td>
-      <td>${viewport}</td>
-      <td>${visit.referrer}</td>
-      <td><button class="btn-details" data-visit-id="${visit.id}"><i class="fas fa-info-circle"></i></button></td>
+    visitItem.innerHTML = `
+      <div class="visit-info">
+        <div class="visit-site">${site.name}</div>
+        <div class="visit-details">
+          <span><i class="fas fa-clock"></i> ${formatDate(visit.timestamp)}</span>
+          <span><i class="fas fa-globe"></i> ${visit.browserName} ${visit.browserVersion || ''}</span>
+          <span><i class="fas fa-desktop"></i> ${visit.platform}</span>
+        </div>
+      </div>
+      <div class="visit-actions">
+        <button class="btn btn-sm view-details-btn"><i class="fas fa-search"></i> Details</button>
+      </div>
     `;
     
-    tbody.appendChild(row);
-  });
-  
-  // Add event listeners to detail buttons
-  table.querySelectorAll('.btn-details').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const visitId = btn.dataset.visitId;
-      const visit = visits.find(v => v.id === visitId);
-      if (visit) {
-        showVisitDetails(visit);
-      }
+    const detailsBtn = visitItem.querySelector('.view-details-btn');
+    detailsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showVisitDetails(visit);
     });
+    
+    container.appendChild(visitItem);
   });
-  
-  container.appendChild(table);
 }
 
 // Filter visits
 function filterVisits() {
   const siteId = elements.siteFilter.value;
-  const searchTerm = elements.searchVisits.value.toLowerCase();
+  const searchText = elements.searchVisits.value.toLowerCase();
   
   let filteredVisits = [...allVisits];
   
+  // Filter by site
   if (siteId !== 'all') {
     filteredVisits = filteredVisits.filter(visit => visit.siteId === siteId);
   }
   
-  if (searchTerm) {
+  // Filter by search text
+  if (searchText) {
     filteredVisits = filteredVisits.filter(visit => {
-      const site = allSites.find(s => s.id === visit.siteId) || { name: '' };
-      const browserName = visit.browserName || visit.browser || '';
+      const site = allSites.find(s => s.id === visit.siteId) || { name: 'Unknown Site' };
+      
       return (
-        browserName.toLowerCase().includes(searchTerm) ||
-        (visit.browserVersion || '').toLowerCase().includes(searchTerm) ||
-        visit.platform.toLowerCase().includes(searchTerm) ||
-        visit.referrer.toLowerCase().includes(searchTerm) ||
-        site.name.toLowerCase().includes(searchTerm)
+        site.name.toLowerCase().includes(searchText) ||
+        visit.browserName.toLowerCase().includes(searchText) ||
+        visit.platform.toLowerCase().includes(searchText) ||
+        visit.referrer.toLowerCase().includes(searchText)
       );
     });
   }
@@ -285,8 +248,14 @@ function filterVisits() {
 
 // Update site filter dropdown
 function updateSiteFilter(sites) {
-  elements.siteFilter.innerHTML = '<option value="all">All Sites</option>';
+  if (!elements.siteFilter) return;
   
+  // Clear existing options except "All Sites"
+  while (elements.siteFilter.options.length > 1) {
+    elements.siteFilter.remove(1);
+  }
+  
+  // Add site options
   sites.forEach(site => {
     const option = document.createElement('option');
     option.value = site.id;
@@ -297,34 +266,29 @@ function updateSiteFilter(sites) {
 
 // Load Site Details
 async function loadSiteDetails(siteId) {
-  currentSiteId = siteId;
-  showPage('site-details');
-  
+  // Reset UI
   elements.siteInfo.innerHTML = '<div class="loading">Loading site details...</div>';
+  elements.totalVisits.textContent = '0';
+  elements.uniqueVisitors.textContent = '0';
+  elements.todayVisits.textContent = '0';
   elements.siteSpecificVisits.innerHTML = '<div class="loading">Loading visits...</div>';
   
-  const site = await fetchData(`${API.sites}/${siteId}`);
+  // Get site data
+  const site = allSites.find(s => s.id === siteId);
+  if (!site) return;
   
-  if (!site) {
-    elements.siteInfo.innerHTML = '<p>Site not found.</p>';
-    return;
-  }
-  
+  // Update title
   elements.siteDetailsTitle.textContent = site.name;
   
+  // Update site info
   elements.siteInfo.innerHTML = `
     <h3>${site.name}</h3>
-    <p><span class="info-label">URL:</span> ${site.url}</p>
-    <p><span class="info-label">Site ID:</span> ${site.id}</p>
-    <p><span class="info-label">Created:</span> ${formatDate(site.createdAt)}</p>
+    <p><strong>URL:</strong> ${site.url}</p>
+    <p><strong>Created:</strong> ${formatDate(site.createdAt)}</p>
+    <p><strong>Site ID:</strong> ${site.id}</p>
   `;
   
-  // Generate tracking code snippet
-  const baseUrl = window.location.origin;
-  const trackingCode = `<script src="${baseUrl}/tracker.js?siteId=${site.id}"></script>`;
-  elements.trackingSnippet.textContent = trackingCode;
-  
-  // Load visits for this site
+  // Get visits for this site
   const visits = await fetchData(API.siteVisits(siteId));
   
   if (!visits) {
@@ -333,23 +297,24 @@ async function loadSiteDetails(siteId) {
   }
   
   // Update stats
-  const totalVisits = visits.length;
+  elements.totalVisits.textContent = visits.length;
   
+  // Count unique visitors (by IP)
   const uniqueIPs = new Set();
   visits.forEach(visit => uniqueIPs.add(visit.ip));
-  const uniqueVisitorsCount = uniqueIPs.size;
+  elements.uniqueVisitors.textContent = uniqueIPs.size;
   
-  const today = new Date().toISOString().split('T')[0];
-  const todayVisits = visits.filter(visit => 
-    visit.timestamp.startsWith(today)
-  ).length;
+  // Count today's visits
+  const today = new Date().toDateString();
+  const todaysVisits = visits.filter(visit => new Date(visit.timestamp).toDateString() === today);
+  elements.todayVisits.textContent = todaysVisits.length;
   
-  elements.totalVisits.textContent = totalVisits;
-  elements.uniqueVisitors.textContent = uniqueVisitorsCount;
-  elements.todayVisits.textContent = todayVisits;
-  
-  // Render visits table
+  // Render visits
   renderVisits(visits, elements.siteSpecificVisits);
+  
+  // Update tracking code snippet
+  const trackingCode = `<script src="${window.location.origin}/tracker/js/tracker.js?siteId=${site.id}"></script>`;
+  elements.trackingSnippet.textContent = trackingCode;
 }
 
 // Add new site
@@ -360,18 +325,19 @@ async function addNewSite(event) {
   const url = elements.siteUrl.value.trim();
   
   if (!name || !url) {
-    alert('Please fill in all fields');
+    alert('Please enter both site name and URL');
     return;
   }
   
   const newSite = await postData(API.sites, { name, url });
   
   if (newSite) {
+    // Clear form
     elements.siteName.value = '';
     elements.siteUrl.value = '';
     
-    alert('Site created successfully!');
-    loadSites();
+    // Reload sites and show sites page
+    await loadSites();
     showPage('sites');
   } else {
     alert('Failed to create site. Please try again.');
@@ -380,8 +346,11 @@ async function addNewSite(event) {
 
 // Copy tracking code
 function copyTrackingCode() {
-  const code = elements.trackingSnippet.textContent;
-  navigator.clipboard.writeText(code)
+  const trackingCode = elements.trackingSnippet.textContent;
+  
+  if (!trackingCode) return;
+  
+  navigator.clipboard.writeText(trackingCode)
     .then(() => {
       elements.copyCodeBtn.textContent = 'Copied!';
       setTimeout(() => {
@@ -416,12 +385,12 @@ elements.copyCodeBtn.addEventListener('click', copyTrackingCode);
 // Authentication functions
 async function getCurrentUser() {
   try {
-    const response = await fetch('/api/user');
+    const response = await fetch(`${API.auth}?action=user`);
     
     if (!response.ok) {
-      // If not authenticated, redirect to login
       if (response.status === 401) {
-        window.location.href = '/login';
+        // Not authenticated, redirect to login
+        window.location.href = 'index.php';
         return null;
       }
       throw new Error(`HTTP error! Status: ${response.status}`);
@@ -429,32 +398,42 @@ async function getCurrentUser() {
     
     return await response.json();
   } catch (error) {
-    console.error('Error getting current user:', error);
+    console.error('Auth error:', error);
+    // Redirect to login on error
+    window.location.href = 'index.php';
     return null;
   }
 }
 
-async function logout() {
-  try {
-    await fetch('/api/logout');
-    window.location.href = '/login';
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
+function logout() {
+  fetch(`${API.auth}?action=logout`)
+    .then(() => {
+      window.location.href = 'index.php';
+    })
+    .catch(error => {
+      console.error('Logout error:', error);
+      window.location.href = 'index.php';
+    });
 }
 
 async function changePassword(event) {
   event.preventDefault();
   
+  // Reset UI
+  elements.passwordError.style.display = 'none';
+  elements.passwordSuccess.style.display = 'none';
+  
   const currentPassword = elements.currentPassword.value;
   const newPassword = elements.newPassword.value;
   const confirmPassword = elements.confirmPassword.value;
   
-  // Reset messages
-  elements.passwordError.style.display = 'none';
-  elements.passwordSuccess.style.display = 'none';
-  
   // Validate passwords
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    elements.passwordError.textContent = 'All fields are required';
+    elements.passwordError.style.display = 'block';
+    return;
+  }
+  
   if (newPassword !== confirmPassword) {
     elements.passwordError.textContent = 'New passwords do not match';
     elements.passwordError.style.display = 'block';
@@ -468,7 +447,7 @@ async function changePassword(event) {
   }
   
   try {
-    const response = await fetch('/api/change-password', {
+    const response = await fetch(`${API.auth}?action=change-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

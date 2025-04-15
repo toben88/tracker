@@ -1,9 +1,9 @@
 # Web Analytics Tracker
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![License](https://img.shields.io/badge/license-Proprietary-red)
 
-A lightweight, self-hosted web analytics solution that allows you to monitor visitor activity across multiple websites. This application provides a tracking script to embed in your HTML pages and a secure admin dashboard to visualize the collected data.
+A lightweight, self-hosted PHP web analytics solution that allows you to monitor visitor activity across multiple websites. This application provides a tracking script to embed in your HTML pages and a secure admin dashboard to visualize the collected data.
 
 ## 📊 Features
 
@@ -23,31 +23,25 @@ A lightweight, self-hosted web analytics solution that allows you to monitor vis
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v12 or higher)
-- npm (v6 or higher)
+- PHP 8.0 or higher
+- Web server with PHP support (Apache, Nginx, etc.)
+- Write permissions for the application's data directory
 
 ### Installation
 
 1. Clone or download this repository
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Start the server:
-
-```bash
-npm start
-```
-
-The server will run on http://localhost:3000 by default.
+2. Upload the contents of the `php-version` directory to your web server
+3. Set proper permissions:
+   - `755` for directories
+   - `644` for files
+   - `755` for the `data` directory
+4. Access the application through your web browser
 
 ## 📝 Usage
 
 ### Admin Dashboard
 
-1. Access http://localhost:3000 in your browser
+1. Access the application URL in your browser (e.g., https://yourdomain.com/tracker/)
 2. Login with default credentials:
    - Username: `admin`
    - Password: `admin123`
@@ -62,10 +56,10 @@ The server will run on http://localhost:3000 by default.
 2. Paste the tracking code into the HTML of your website, ideally just before the closing `</body>` tag:
 
 ```html
-<script src="http://localhost:3000/tracker.js?siteId=YOUR_SITE_ID"></script>
+<script src="https://yourdomain.com/tracker/js/tracker.js?siteId=YOUR_SITE_ID"></script>
 ```
 
-3. Replace `localhost:3000` with your actual server domain when deploying to production
+3. Replace `yourdomain.com/tracker` with your actual server domain and path
 
 ### Viewing Tracking Data
 
@@ -79,16 +73,21 @@ The server will run on http://localhost:3000 by default.
 
 ```
 /
-├── public/              # Frontend assets
-│   ├── app.js          # Admin dashboard JavaScript
-│   ├── index.html      # Admin dashboard HTML
-│   ├── login.html      # Login page
-│   ├── styles.css      # CSS styles
-│   ├── tracker.js      # Tracking script for embedding
-│   └── sample.html     # Example implementation
-├── server.js           # Express server and API endpoints
-├── package.json        # Dependencies and scripts
-├── db.json             # Database file (created on first run)
+├── api/                # Backend API endpoints
+│   ├── auth.php        # Authentication endpoints
+│   ├── sites.php       # Site management endpoints
+│   ├── track.php       # Tracking data collection
+│   └── visits.php      # Visit data retrieval
+├── css/                # CSS styles
+├── data/               # Data storage directory
+│   ├── admins.json     # Admin user accounts
+│   ├── sites/          # Site configuration files
+│   └── visits/         # Visit data records
+├── js/                 # JavaScript files
+│   ├── app.js          # Admin dashboard functionality
+│   └── tracker.js      # Tracking script for embedding
+├── admin.php           # Admin dashboard
+├── index.php           # Login page
 └── README.md           # Documentation
 ```
 
@@ -96,13 +95,14 @@ The server will run on http://localhost:3000 by default.
 
 For production use, consider the following:
 
-1. **Hosting**: Set up the application on a server with a proper domain
-2. **Configuration**: Update the `trackerEndpoint` in `tracker.js` to point to your production domain
+1. **Hosting**: Upload to any web server with PHP support (shared hosting works fine)
+2. **Permissions**: Ensure proper file permissions as mentioned in the installation section
 3. **Security**: 
    - Use HTTPS for all traffic
    - Set a strong admin password
-   - Consider implementing rate limiting
-4. **Scaling**: For high-traffic sites, replace LowDB with a more robust database solution
+   - The application includes built-in rate limiting and CSRF protection
+   - Protect the data directory with the included .htaccess file
+4. **Scaling**: For high-traffic sites, consider migrating from JSON files to a database like MySQL
 
 ## 🔒 Privacy Considerations
 
@@ -117,7 +117,11 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 
 ## 📄 License
 
-This project is [MIT](LICENSE) licensed.
+© 2025 All Rights Reserved.
+
+This software and associated documentation files are proprietary and confidential. No part of this software may be reproduced, modified, distributed, or sublicensed without prior written permission from the copyright holder.
+
+See the [LICENSE](LICENSE) file for details.
 
 ---
 
